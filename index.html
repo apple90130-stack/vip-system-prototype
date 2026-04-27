@@ -1,0 +1,906 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>個人 VIP 系統 — 原型</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  html,body{font-family:"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif;}
+  .scrollbar-thin::-webkit-scrollbar{width:6px;height:6px;}
+  .scrollbar-thin::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px;}
+  .progress-bar{transition:width .6s cubic-bezier(.2,.8,.2,1);}
+  .tag-chip{transition:all .15s;}
+  .tag-chip:hover{transform:translateY(-1px);}
+  details>summary{list-style:none;cursor:pointer;}
+  details>summary::-webkit-details-marker{display:none;}
+  .card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;}
+  .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem .9rem;border-radius:8px;font-size:.875rem;font-weight:500;transition:all .15s;}
+  .btn-primary{background:#1f3864;color:#fff;}
+  .btn-primary:hover{background:#162947;}
+  .btn-ghost{background:#f1f5f9;color:#334155;}
+  .btn-ghost:hover{background:#e2e8f0;}
+  .nav-item{display:flex;align-items:center;gap:.6rem;padding:.55rem .8rem;border-radius:8px;font-size:.9rem;color:#475569;cursor:pointer;}
+  .nav-item:hover{background:#eef2ff;}
+  .nav-item.active{background:#1f3864;color:#fff;font-weight:500;}
+  .nav-item.active svg{color:#fff;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+  .fade-in{animation:fadeIn .25s ease-out;}
+  .toast{animation:fadeIn .2s ease-out;}
+</style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800">
+
+<!-- Top header -->
+<header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+  <div class="max-w-[1400px] mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-[#1f3864] flex items-center justify-center text-white font-bold">V</div>
+      <div>
+        <div class="font-semibold text-slate-900">個人 VIP 系統</div>
+        <div class="text-xs text-slate-500">原型展示版 · Prototype</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <div class="bg-slate-100 rounded-lg p-1 flex" id="role-switch">
+        <button data-role="member" class="px-4 py-1.5 rounded-md text-sm font-medium transition" >會員端</button>
+        <button data-role="admin"  class="px-4 py-1.5 rounded-md text-sm font-medium transition" >管理端</button>
+      </div>
+      <div class="hidden md:flex items-center gap-2 text-sm text-slate-600 ml-3" id="who-am-i"></div>
+    </div>
+  </div>
+</header>
+
+<!-- Layout shell -->
+<div class="max-w-[1400px] mx-auto px-6 py-6 grid grid-cols-12 gap-6">
+  <aside class="col-span-12 md:col-span-3 lg:col-span-2">
+    <nav id="sidenav" class="card p-3 space-y-1 sticky top-20"></nav>
+  </aside>
+  <main id="main" class="col-span-12 md:col-span-9 lg:col-span-10 space-y-6"></main>
+</div>
+
+<!-- Toast container -->
+<div id="toast-stack" class="fixed bottom-6 right-6 z-50 space-y-2"></div>
+
+<script>
+/* ============================================================
+ *   MOCK DATA
+ * ============================================================ */
+const DB = {
+  // 商品
+  products: [
+    { id: 'p1', name: '益生菌', emoji: '🦠' },
+    { id: 'p2', name: '鱸魚精', emoji: '🐟' },
+    { id: 'p3', name: '藻油', emoji: '🌿' },
+    { id: 'p4', name: '葉黃素', emoji: '👁️' },
+    { id: 'p5', name: '膠原蛋白', emoji: '✨' },
+  ],
+  // 標籤
+  tags: [
+    { id: 't1', name: '益生菌',   color: '#10b981' },
+    { id: 't2', name: '鱸魚精',   color: '#0ea5e9' },
+    { id: 't3', name: '藻油',     color: '#22c55e' },
+    { id: 't4', name: '葉黃素',   color: '#eab308' },
+    { id: 't5', name: '膠原蛋白', color: '#ec4899' },
+    { id: 't6', name: '瘦身',     color: '#f97316' },
+    { id: 't7', name: '親子',     color: '#6366f1' },
+    { id: 't8', name: '中年保養', color: '#a855f7' },
+  ],
+  // 會員
+  members: [
+    { id: 'm1', name: '王小明', phone: '0912-345-678', level: 'VIP',  joinDate:'2024-03-12',
+      totalSpent: 32400, groupBuyCount: 8, showOffCount: 12, points: 320,
+      products:['p1','p3'], tags:['t1','t3','t7'] },
+    { id: 'm2', name: '陳美麗', phone: '0922-111-222', level: '一般', joinDate:'2025-09-01',
+      totalSpent: 18600, groupBuyCount: 4, showOffCount: 5,  points: 80,
+      products:['p2','p5'], tags:['t2','t5','t8'] },
+    { id: 'm3', name: '林志強', phone: '0933-555-678', level: '一般', joinDate:'2025-12-20',
+      totalSpent: 9800,  groupBuyCount: 2, showOffCount: 1,  points: 40,
+      products:['p1'],          tags:['t1','t6'] },
+    { id: 'm4', name: '張雅婷', phone: '0988-777-333', level: 'VIP',  joinDate:'2023-11-04',
+      totalSpent: 58200, groupBuyCount: 16,showOffCount: 22, points: 740,
+      products:['p1','p2','p4'],tags:['t1','t2','t4','t8'] },
+    { id: 'm5', name: '黃小芳', phone: '0955-444-321', level: '一般', joinDate:'2026-01-10',
+      totalSpent: 6400,  groupBuyCount: 1, showOffCount: 0,  points: 0,
+      products:['p4'],          tags:['t4','t7'] },
+  ],
+  // 課程
+  courses: [
+    { id:'c1', title:'益生菌與兒童腸胃保健', date:'2026-05-01', time:'20:00', tags:['t1','t7'],
+      teacher:'林營養師', outline:'介紹益生菌種類、孩童每日攝取建議、Q&A 時間。', image:'🦠' },
+    { id:'c2', title:'藻油 DHA 對學齡兒童的影響', date:'2026-05-08', time:'20:00', tags:['t3','t7'],
+      teacher:'李醫師',   outline:'藻油 vs 魚油、學童專注力、攝取建議量。', image:'🌿' },
+    { id:'c3', title:'中年代謝下降怎麼吃', date:'2026-05-15', time:'19:30', tags:['t6','t8'],
+      teacher:'陳營養師', outline:'更年期後代謝、減脂菜單、補充建議。', image:'⚖️' },
+    { id:'c4', title:'葉黃素護眼全攻略', date:'2026-05-22', time:'20:30', tags:['t4'],
+      teacher:'眼科陳醫師', outline:'3C 族護眼飲食、葉黃素吸收率、迷思破解。', image:'👁️' },
+  ],
+  // 任務
+  tasks: [
+    { id:'k1', name:'曬單分享',     points:30, description:'購買後，將訂單截圖張貼於社群並上傳截圖。' },
+    { id:'k2', name:'產品開箱照',   points:50, description:'拍下產品開箱照並上傳。' },
+    { id:'k3', name:'使用心得文',   points:80, description:'發布 200 字以上使用心得並上傳連結截圖。' },
+  ],
+  // 任務提交（待審核）
+  submissions: [
+    { id:'s1', memberId:'m1', taskId:'k1', status:'pending',  ts:'2026-04-26 14:02', note:'IG 貼文截圖' },
+    { id:'s2', memberId:'m2', taskId:'k2', status:'approved', ts:'2026-04-25 10:30', note:'已審核' },
+    { id:'s3', memberId:'m3', taskId:'k1', status:'pending',  ts:'2026-04-27 09:15', note:'FB 貼文截圖' },
+    { id:'s4', memberId:'m4', taskId:'k3', status:'pending',  ts:'2026-04-27 18:42', note:'部落格連結' },
+  ],
+  // 打卡活動（與商品連動）
+  activities: [
+    { id:'a1', name:'30 天益生菌打卡', type:'打卡',   productIds:['p1'], days:30, joined:18 },
+    { id:'a2', name:'藻油月月抽獎',   type:'抽獎',   productIds:['p3'], joined:9 },
+    { id:'a3', name:'葉黃素 21 日挑戰',type:'打卡',   productIds:['p4'], days:21, joined:6 },
+    { id:'a4', name:'鱸魚精早安挑戰', type:'打卡',   productIds:['p2'], days:14, joined:11 },
+  ],
+  // 開團行事曆（全會員共通）
+  groupBuys: [
+    { date:'2026-05-03', product:'益生菌',     type:'體驗團' },
+    { date:'2026-05-10', product:'葉黃素',     type:'中年團' },
+    { date:'2026-05-17', product:'藻油',       type:'體驗團' },
+    { date:'2026-05-24', product:'膠原蛋白',   type:'限量團' },
+    { date:'2026-05-31', product:'鱸魚精',     type:'中年團' },
+  ],
+  // 公告
+  announcements: [
+    { id:'n1', title:'5 月粉絲福利月', date:'2026-04-25',
+      content:'本月所有 VIP 會員消費滿 1000 即贈神秘小禮，數量有限送完為止！' },
+    { id:'n2', title:'新講師加入',     date:'2026-04-20',
+      content:'本月起邀請眼科陳醫師加入線上課程，首場為「葉黃素護眼全攻略」。' },
+  ],
+};
+
+/* VIP 門檻 */
+const VIP_RULE = { spend: 30000, showOff: 10 };
+
+/* 目前模擬登入會員 */
+let CURRENT_MEMBER_ID = 'm1';
+
+/* 目前角色 / 路由狀態 */
+const STATE = { role: 'member', page: 'home' };
+
+/* ============================================================
+ *   UTIL
+ * ============================================================ */
+const $ = sel => document.querySelector(sel);
+const el = (tag, attrs={}, children=[]) => {
+  const e = document.createElement(tag);
+  for(const [k,v] of Object.entries(attrs)){
+    if(k==='class') e.className = v;
+    else if(k==='html') e.innerHTML = v;
+    else if(k.startsWith('on') && typeof v==='function') e.addEventListener(k.slice(2),v);
+    else e.setAttribute(k,v);
+  }
+  (Array.isArray(children)?children:[children]).forEach(c=>{
+    if(c==null) return;
+    e.appendChild(typeof c==='string'?document.createTextNode(c):c);
+  });
+  return e;
+};
+const fmtCurrency = n => 'NT$ ' + n.toLocaleString();
+const tagById = id => DB.tags.find(t=>t.id===id);
+const productById = id => DB.products.find(p=>p.id===id);
+const memberById = id => DB.members.find(m=>m.id===id);
+const taskById = id => DB.tasks.find(k=>k.id===id);
+const courseById = id => DB.courses.find(c=>c.id===id);
+
+function toast(msg, kind='info'){
+  const c = document.getElementById('toast-stack');
+  const colors = {info:'bg-slate-800', ok:'bg-emerald-600', warn:'bg-amber-600', err:'bg-rose-600'};
+  const t = el('div',{class:`toast text-white text-sm px-4 py-2.5 rounded-lg shadow-lg ${colors[kind]||colors.info}`}, [msg]);
+  c.appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=>t.remove(),200); }, 2200);
+}
+
+function tagChip(tag, opts={}){
+  const t = typeof tag==='string'? tagById(tag): tag;
+  if(!t) return '';
+  const style = `background:${t.color}1a;color:${t.color};border:1px solid ${t.color}33;`;
+  return `<span class="tag-chip inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium" style="${style}">${t.name}</span>`;
+}
+
+function icon(name, cls='w-4 h-4'){
+  return `<i data-lucide="${name}" class="${cls}"></i>`;
+}
+
+/* ============================================================
+ *   NAVIGATION
+ * ============================================================ */
+const NAV = {
+  member: [
+    { key:'home',         label:'個人首頁',   icon:'home' },
+    { key:'activities',   label:'專屬活動',   icon:'sparkles' },
+    { key:'courses',      label:'線上課程',   icon:'graduation-cap' },
+    { key:'calendar',     label:'開團行事曆', icon:'calendar' },
+    { key:'checkin',      label:'打卡',       icon:'check-circle-2' },
+    { key:'tasks',        label:'任務專區',   icon:'camera' },
+    { key:'announce',     label:'公告',       icon:'megaphone' },
+  ],
+  admin: [
+    { key:'dashboard',    label:'總覽儀表板', icon:'layout-dashboard' },
+    { key:'members',      label:'會員管理',   icon:'users' },
+    { key:'tags',         label:'標籤管理',   icon:'tag' },
+    { key:'courses',      label:'課程管理',   icon:'book-open' },
+    { key:'review',       label:'任務審核',   icon:'shield-check' },
+    { key:'announce',     label:'公告管理',   icon:'megaphone' },
+  ],
+};
+
+function renderSidenav(){
+  const items = NAV[STATE.role];
+  const nav = $('#sidenav');
+  nav.innerHTML = '';
+  items.forEach(it=>{
+    const node = el('div',{
+      class:`nav-item ${STATE.page===it.key?'active':''}`,
+      onclick:()=>{ STATE.page = it.key; render(); }
+    });
+    node.innerHTML = `${icon(it.icon)}<span>${it.label}</span>`;
+    nav.appendChild(node);
+  });
+  lucide.createIcons();
+}
+
+function setRole(role){
+  STATE.role = role;
+  STATE.page = role==='member' ? 'home' : 'dashboard';
+  // role buttons styling
+  document.querySelectorAll('#role-switch button').forEach(b=>{
+    if(b.dataset.role===role){ b.classList.add('bg-white','text-[#1f3864]','shadow'); }
+    else { b.classList.remove('bg-white','text-[#1f3864]','shadow'); b.classList.add('text-slate-500'); }
+  });
+  // who am I badge
+  const w = $('#who-am-i');
+  if(role==='member'){
+    const m = memberById(CURRENT_MEMBER_ID);
+    w.innerHTML = `${icon('user','w-4 h-4')}<span>${m.name}（${m.level}）</span>`;
+  } else {
+    w.innerHTML = `${icon('shield','w-4 h-4')}<span>後臺管理員</span>`;
+  }
+  render();
+  lucide.createIcons();
+}
+
+document.querySelectorAll('#role-switch button').forEach(b=>{
+  b.addEventListener('click',()=>setRole(b.dataset.role));
+});
+
+/* ============================================================
+ *   ROOT RENDER
+ * ============================================================ */
+function render(){
+  renderSidenav();
+  const main = $('#main');
+  main.innerHTML = '';
+  const fn = (STATE.role==='member' ? MemberPages : AdminPages)[STATE.page];
+  if(fn){
+    const node = fn();
+    node.classList.add('fade-in');
+    main.appendChild(node);
+  } else {
+    main.appendChild(el('div',{class:'card p-6'},'尚未實作的頁面'));
+  }
+  lucide.createIcons();
+}
+
+/* ============================================================
+ *   MEMBER PAGES
+ * ============================================================ */
+const MemberPages = {
+
+  home(){
+    const m = memberById(CURRENT_MEMBER_ID);
+    const spendPct = Math.min(100, Math.round(m.totalSpent / VIP_RULE.spend * 100));
+    const showPct  = Math.min(100, Math.round(m.showOffCount / VIP_RULE.showOff * 100));
+    const isVIP = m.totalSpent >= VIP_RULE.spend || m.showOffCount >= VIP_RULE.showOff;
+
+    const wrap = el('div',{class:'space-y-6'});
+
+    // Hero / Greeting
+    const hero = el('div',{class:'card p-6 bg-gradient-to-br from-[#1f3864] to-[#2e75b6] text-white'});
+    hero.innerHTML = `
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div class="text-sm opacity-80">您好，</div>
+          <div class="text-2xl font-bold">${m.name}　<span class="text-base font-normal opacity-80">/ ${m.level} 會員</span></div>
+          <div class="text-sm opacity-80 mt-1">加入日期 ${m.joinDate}　·　目前積分 <b>${m.points}</b></div>
+        </div>
+        <div class="flex gap-2 flex-wrap">${m.tags.map(id=>tagChip(id)).join('')}</div>
+      </div>`;
+    wrap.appendChild(hero);
+
+    // VIP progress
+    const prog = el('div',{class:'card p-6'});
+    prog.innerHTML = `
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold flex items-center gap-2">${icon('crown','w-5 h-5 text-amber-500')} VIP 進度</h2>
+        <span class="text-xs ${isVIP?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-600'} px-2 py-1 rounded-full">
+          ${isVIP?'已達 VIP 標準':'尚未達 VIP 標準'}
+        </span>
+      </div>
+
+      <div class="space-y-5">
+        <div>
+          <div class="flex justify-between text-sm mb-1.5">
+            <span class="text-slate-600">累積消費金額</span>
+            <span class="font-medium">${fmtCurrency(m.totalSpent)} / ${fmtCurrency(VIP_RULE.spend)}</span>
+          </div>
+          <div class="h-3 bg-slate-100 rounded-full overflow-hidden">
+            <div class="progress-bar h-full bg-gradient-to-r from-[#2e75b6] to-[#1f3864]" style="width:${spendPct}%"></div>
+          </div>
+        </div>
+        <div>
+          <div class="flex justify-between text-sm mb-1.5">
+            <span class="text-slate-600">曬單次數</span>
+            <span class="font-medium">${m.showOffCount} 次 / ${VIP_RULE.showOff} 次</span>
+          </div>
+          <div class="h-3 bg-slate-100 rounded-full overflow-hidden">
+            <div class="progress-bar h-full bg-gradient-to-r from-amber-400 to-amber-600" style="width:${showPct}%"></div>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-3 pt-2">
+          <div class="p-3 bg-slate-50 rounded-lg text-center">
+            <div class="text-xs text-slate-500">跟團次數</div>
+            <div class="text-xl font-semibold mt-0.5">${m.groupBuyCount}</div>
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg text-center">
+            <div class="text-xs text-slate-500">累積消費</div>
+            <div class="text-xl font-semibold mt-0.5">${fmtCurrency(m.totalSpent)}</div>
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg text-center">
+            <div class="text-xs text-slate-500">會員積分</div>
+            <div class="text-xl font-semibold mt-0.5 text-amber-600">${m.points}</div>
+          </div>
+        </div>
+      </div>
+    `;
+    wrap.appendChild(prog);
+
+    // Quick links to other modules
+    const quick = el('div',{class:'grid grid-cols-2 md:grid-cols-4 gap-3'});
+    [
+      ['activities','sparkles','專屬活動','#fff7ed','#f97316'],
+      ['courses','graduation-cap','線上課程','#eff6ff','#2563eb'],
+      ['checkin','check-circle-2','打卡','#ecfdf5','#10b981'],
+      ['tasks','camera','任務專區','#fdf2f8','#ec4899'],
+    ].forEach(([k,ic,lab,bg,fg])=>{
+      const c = el('div',{class:'card p-4 flex items-center gap-3 cursor-pointer hover:shadow-md',
+        onclick:()=>{ STATE.page=k; render(); }});
+      c.innerHTML = `<div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background:${bg};color:${fg}">${icon(ic,'w-5 h-5')}</div>
+        <div><div class="font-medium">${lab}</div><div class="text-xs text-slate-500">立即前往</div></div>`;
+      quick.appendChild(c);
+    });
+    wrap.appendChild(quick);
+
+    return wrap;
+  },
+
+  activities(){
+    const m = memberById(CURRENT_MEMBER_ID);
+    const myProducts = m.products;
+    const acts = DB.activities.filter(a => a.productIds.some(p => myProducts.includes(p)));
+    const wrap = el('div',{class:'space-y-4'});
+    wrap.appendChild(pageHeader('專屬活動','依您購買的商品為您客製的活動'));
+    if(acts.length===0){
+      wrap.appendChild(emptyState('目前沒有符合您商品的活動。'));
+      return wrap;
+    }
+    const grid = el('div',{class:'grid md:grid-cols-2 gap-4'});
+    acts.forEach(a=>{
+      const prods = a.productIds.map(productById).map(p=>`<span class="text-xs bg-slate-100 px-2 py-0.5 rounded">${p.emoji} ${p.name}</span>`).join(' ');
+      const c = el('div',{class:'card p-5'});
+      c.innerHTML = `
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="text-xs ${a.type==='打卡'?'text-emerald-600':'text-amber-600'} font-medium">${a.type}活動</div>
+            <div class="font-semibold text-lg mt-1">${a.name}</div>
+            <div class="mt-2 flex gap-2 flex-wrap">${prods}</div>
+          </div>
+          <div class="text-right text-xs text-slate-500">已參加<br><span class="text-slate-800 text-base font-semibold">${a.joined}</span> 人</div>
+        </div>
+        <div class="mt-4 flex gap-2">
+          <button class="btn btn-primary" onclick="window.__demoJoin('${a.name}')">立即參加</button>
+          <button class="btn btn-ghost">了解詳情</button>
+        </div>`;
+      grid.appendChild(c);
+    });
+    wrap.appendChild(grid);
+    return wrap;
+  },
+
+  courses(){
+    const m = memberById(CURRENT_MEMBER_ID);
+    const wrap = el('div',{class:'space-y-4'});
+    wrap.appendChild(pageHeader('近期線上課程','由講師為您準備的免費課程，依標籤推薦'));
+    const grid = el('div',{class:'grid md:grid-cols-2 gap-4'});
+    DB.courses.forEach(c=>{
+      const matched = c.tags.some(t=>m.tags.includes(t));
+      const card = el('div',{class:'card p-5'});
+      card.innerHTML = `
+        <div class="flex items-start gap-4">
+          <div class="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center text-3xl">${c.image}</div>
+          <div class="flex-1">
+            <div class="flex items-start justify-between gap-2">
+              <div class="font-semibold">${c.title}</div>
+              ${matched?'<span class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">為您推薦</span>':''}
+            </div>
+            <div class="text-xs text-slate-500 mt-0.5">${c.teacher}　·　${c.date} ${c.time}</div>
+            <div class="mt-2 text-sm text-slate-600">${c.outline}</div>
+            <div class="mt-2 flex gap-1 flex-wrap">${c.tags.map(t=>tagChip(t)).join('')}</div>
+          </div>
+        </div>
+        <div class="mt-4 flex gap-2">
+          <button class="btn btn-primary" onclick="window.__enroll('${c.id}')">我要報名</button>
+          <button class="btn btn-ghost">課程大綱</button>
+        </div>`;
+      grid.appendChild(card);
+    });
+    wrap.appendChild(grid);
+    return wrap;
+  },
+
+  calendar(){
+    const wrap = el('div',{class:'space-y-4'});
+    wrap.appendChild(pageHeader('近期開團行事曆','以下為近期開團預告，全會員共通'));
+    const card = el('div',{class:'card overflow-hidden'});
+    card.innerHTML = `
+      <div class="grid grid-cols-7 text-xs font-medium text-slate-500 border-b">
+        ${['日','一','二','三','四','五','六'].map(d=>`<div class="p-3 text-center">${d}</div>`).join('')}
+      </div>`;
+    // Render May 2026
+    const days = [];
+    const start = new Date('2026-05-01').getDay();
+    for(let i=0;i<start;i++) days.push(null);
+    for(let i=1;i<=31;i++) days.push(i);
+    const grid = el('div',{class:'grid grid-cols-7'});
+    days.forEach(d=>{
+      const dateStr = d ? `2026-05-${String(d).padStart(2,'0')}` : null;
+      const events = dateStr ? DB.groupBuys.filter(g=>g.date===dateStr) : [];
+      const cell = el('div',{class:'min-h-[88px] border-b border-r p-2 text-sm'});
+      if(d){
+        const ev = events.map(e=>{
+          const color = e.type==='體驗團'?'bg-blue-100 text-blue-700'
+                      : e.type==='中年團'?'bg-purple-100 text-purple-700'
+                      : 'bg-amber-100 text-amber-700';
+          return `<div class="${color} rounded px-1.5 py-0.5 text-[11px] mb-1 truncate">${e.product}・${e.type}</div>`;
+        }).join('');
+        cell.innerHTML = `<div class="text-xs text-slate-400 mb-1">${d}</div>${ev}`;
+      }
+      grid.appendChild(cell);
+    });
+    card.appendChild(grid);
+    card.appendChild(el('div',{class:'p-3 text-xs text-slate-500 bg-slate-50 border-t'},'※ 開團資訊以官網公告為主，會員若有興趣可前往官網或聯繫客服。'));
+    wrap.appendChild(card);
+    return wrap;
+  },
+
+  checkin(){
+    const m = memberById(CURRENT_MEMBER_ID);
+    const myProducts = m.products;
+    const acts = DB.activities.filter(a=>a.type==='打卡' && a.productIds.some(p=>myProducts.includes(p)));
+    const wrap = el('div',{class:'space-y-4'});
+    wrap.appendChild(pageHeader('打卡專區','僅顯示您已購買商品的打卡活動'));
+    if(acts.length===0){ wrap.appendChild(emptyState('目前無可參加的打卡活動。')); return wrap; }
+    const grid = el('div',{class:'grid md:grid-cols-2 gap-4'});
+    acts.forEach(a=>{
+      const myDays = Math.floor(Math.random()*a.days*0.6); // 假進度
+      const pct = Math.round(myDays/a.days*100);
+      const c = el('div',{class:'card p-5'});
+      c.innerHTML = `
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="font-semibold">${a.name}</div>
+            <div class="text-xs text-slate-500 mt-0.5">${a.productIds.map(p=>productById(p).name).join('・')}</div>
+          </div>
+          <div class="text-xs text-slate-500">已 ${myDays}/${a.days} 天</div>
+        </div>
+        <div class="mt-3 h-2 bg-slate-100 rounded-full overflow-hidden">
+          <div class="progress-bar h-full bg-emerald-500" style="width:${pct}%"></div>
+        </div>
+        <div class="mt-4 flex gap-2">
+          <button class="btn btn-primary" onclick="window.__checkin('${a.name}')">${icon('check-circle-2','w-4 h-4')} 今日打卡</button>
+          <button class="btn btn-ghost">活動規則</button>
+        </div>`;
+      grid.appendChild(c);
+    });
+    wrap.appendChild(grid);
+    return wrap;
+  },
+
+  tasks(){
+    const m = memberById(CURRENT_MEMBER_ID);
+    const wrap = el('div',{class:'space-y-4'});
+    wrap.appendChild(pageHeader('會員任務專區','上傳任務照片，經審核後可獲得積分'));
+
+    const grid = el('div',{class:'grid md:grid-cols-3 gap-4'});
+    DB.tasks.forEach(t=>{
+      const c = el('div',{class:'card p-5'});
+      c.innerHTML = `
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-pink-100 text-pink-600 flex items-center justify-center">${icon('camera','w-5 h-5')}</div>
+          <div class="font-semibold">${t.name}</div>
+        </div>
+        <div class="text-sm text-slate-600 mt-2">${t.description}</div>
+        <div class="mt-3 flex items-center justify-between">
+          <span class="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded">+${t.points} 積分</span>
+          <button class="btn btn-primary" onclick="window.__upload('${t.name}')">${icon('upload','w-4 h-4')} 上傳</button>
+        </div>`;
+      grid.appendChild(c);
+    });
+    wrap.appendChild(grid);
+
+    // 我的提交紀錄
+    const my = DB.submissions.filter(s=>s.memberId===CURRENT_MEMBER_ID);
+    const hist = el('div',{class:'card'});
+    hist.innerHTML = `<div class="px-5 py-3 border-b font-semibold">我的提交紀錄</div>`;
+    if(my.length===0){
+      hist.appendChild(el('div',{class:'p-5 text-sm text-slate-500'},'尚無提交紀錄。'));
+    } else {
+      const tbl = el('table',{class:'w-full text-sm'});
+      tbl.innerHTML = `<thead class="text-slate-500 text-left text-xs"><tr>
+        <th class="px-5 py-2">時間</th><th>任務</th><th>備註</th><th class="pr-5 text-right">狀態</th></tr></thead>`;
+      const tb = el('tbody');
+      my.forEach(s=>{
+        const k = taskById(s.taskId);
+        const badge = s.status==='approved'?'<span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded">已審核</span>'
+                     :'<span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">審核中</span>';
+        const tr = el('tr',{class:'border-t'});
+        tr.innerHTML = `<td class="px-5 py-2.5 text-slate-500">${s.ts}</td><td>${k.name}</td><td class="text-slate-600">${s.note}</td><td class="pr-5 text-right">${badge}</td>`;
+        tb.appendChild(tr);
+      });
+      tbl.appendChild(tb);
+      hist.appendChild(tbl);
+    }
+    wrap.appendChild(hist);
+
+    return wrap;
+  },
+
+  announce(){
+    const wrap = el('div',{class:'space-y-4'});
+    wrap.appendChild(pageHeader('公告','粉絲福利活動公告'));
+    DB.announcements.forEach(n=>{
+      const c = el('div',{class:'card p-5'});
+      c.innerHTML = `
+        <div class="flex items-start justify-between">
+          <div class="font-semibold text-lg">${n.title}</div>
+          <div class="text-xs text-slate-500">${n.date}</div>
+        </div>
+        <div class="mt-2 text-sm text-slate-600 leading-relaxed">${n.content}</div>`;
+      wrap.appendChild(c);
+    });
+    return wrap;
+  },
+};
+
+/* ============================================================
+ *   ADMIN PAGES
+ * ============================================================ */
+const AdminPages = {
+
+  dashboard(){
+    const wrap = el('div',{class:'space-y-6'});
+    wrap.appendChild(pageHeader('總覽儀表板','查看整體會員、課程、任務狀況'));
+
+    const stat = (label, val, ic, color) => {
+      const c = el('div',{class:'card p-5'});
+      c.innerHTML = `
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-xs text-slate-500">${label}</div>
+            <div class="text-2xl font-bold mt-1">${val}</div>
+          </div>
+          <div class="w-11 h-11 rounded-xl flex items-center justify-center" style="background:${color}1a;color:${color}">${icon(ic,'w-5 h-5')}</div>
+        </div>`;
+      return c;
+    };
+    const grid = el('div',{class:'grid grid-cols-2 md:grid-cols-4 gap-4'});
+    grid.appendChild(stat('註冊會員', DB.members.length, 'users', '#1f3864'));
+    grid.appendChild(stat('VIP 會員', DB.members.filter(m=>m.level==='VIP').length, 'crown', '#f59e0b'));
+    grid.appendChild(stat('待審任務', DB.submissions.filter(s=>s.status==='pending').length, 'shield-check', '#ec4899'));
+    grid.appendChild(stat('近期課程', DB.courses.length, 'book-open', '#10b981'));
+    wrap.appendChild(grid);
+
+    // 標籤分布
+    const tagCount = {};
+    DB.tags.forEach(t=>tagCount[t.id]=0);
+    DB.members.forEach(m=>m.tags.forEach(id=>tagCount[id]=(tagCount[id]||0)+1));
+    const max = Math.max(1, ...Object.values(tagCount));
+    const tagCard = el('div',{class:'card p-5'});
+    tagCard.innerHTML = `<div class="font-semibold mb-3">會員標籤分布</div>`;
+    const list = el('div',{class:'space-y-2'});
+    DB.tags.forEach(t=>{
+      const cnt = tagCount[t.id]||0;
+      const pct = Math.round(cnt/max*100);
+      const row = el('div',{class:'flex items-center gap-3 text-sm'});
+      row.innerHTML = `
+        <div class="w-24 truncate">${t.name}</div>
+        <div class="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+          <div class="h-full" style="width:${pct}%;background:${t.color}"></div>
+        </div>
+        <div class="w-10 text-right text-slate-600">${cnt}</div>`;
+      list.appendChild(row);
+    });
+    tagCard.appendChild(list);
+    wrap.appendChild(tagCard);
+
+    // 待辦提醒
+    const pending = DB.submissions.filter(s=>s.status==='pending');
+    const todoCard = el('div',{class:'card p-5'});
+    todoCard.innerHTML = `<div class="font-semibold mb-3 flex items-center gap-2">${icon('bell','w-4 h-4 text-amber-500')} 待處理事項</div>`;
+    const todos = [
+      `${pending.length} 件任務照片等待審核`,
+      `5 月 1 日益生菌課程目前 3 位會員報名，將於開課當日自動提醒`,
+      `5 月份預計開團 ${DB.groupBuys.length} 場，請確認商品庫存`,
+    ];
+    todoCard.appendChild(el('ul',{class:'text-sm text-slate-700 space-y-2 list-disc pl-5'},
+      todos.map(t=>el('li',{},t))));
+    wrap.appendChild(todoCard);
+
+    return wrap;
+  },
+
+  members(){
+    const wrap = el('div',{class:'space-y-4'});
+    wrap.appendChild(pageHeader('會員管理','資料自動串接顧客資料表'));
+
+    // Filter bar
+    const filterBar = el('div',{class:'card p-4 flex flex-wrap items-center gap-2'});
+    filterBar.innerHTML = `<div class="text-sm text-slate-500 mr-2">標籤篩選：</div>`;
+    const filterState = {tag:null};
+    DB.tags.forEach(t=>{
+      const btn = el('button',{class:'tag-chip text-xs px-2 py-1 rounded-md border',
+        style:`color:${t.color};border-color:${t.color}55`,
+        onclick:()=>{ filterState.tag = filterState.tag===t.id?null:t.id; refresh(); }
+      },[t.name]);
+      filterBar.appendChild(btn);
+    });
+    const clearBtn = el('button',{class:'btn btn-ghost ml-auto',onclick:()=>{filterState.tag=null;refresh();}},['清除篩選']);
+    filterBar.appendChild(clearBtn);
+    wrap.appendChild(filterBar);
+
+    const tableCard = el('div',{class:'card overflow-hidden'});
+    wrap.appendChild(tableCard);
+
+    function refresh(){
+      const ms = DB.members.filter(m=>!filterState.tag || m.tags.includes(filterState.tag));
+      const isVIP = m => m.totalSpent >= VIP_RULE.spend || m.showOffCount >= VIP_RULE.showOff;
+      tableCard.innerHTML = `
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50 text-left text-xs text-slate-500">
+            <tr>
+              <th class="px-4 py-3">姓名</th>
+              <th>電話</th>
+              <th>等級</th>
+              <th>消費</th>
+              <th>跟團</th>
+              <th>曬單</th>
+              <th>標籤</th>
+              <th class="pr-4 text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${ms.map(m=>`
+              <tr class="border-t hover:bg-slate-50">
+                <td class="px-4 py-3 font-medium">${m.name}</td>
+                <td class="text-slate-600">${m.phone}</td>
+                <td>${isVIP(m)?'<span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">VIP</span>':'<span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">一般</span>'}</td>
+                <td>${fmtCurrency(m.totalSpent)}</td>
+                <td>${m.groupBuyCount}</td>
+                <td>${m.showOffCount}</td>
+                <td class="py-2"><div class="flex flex-wrap gap-1">${m.tags.map(t=>tagChip(t)).join('')}</div></td>
+                <td class="pr-4 text-right">
+                  <button class="btn btn-ghost text-xs" onclick="window.__viewMember('${m.id}')">${icon('eye','w-3.5 h-3.5')} 詳情</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>`;
+      lucide.createIcons();
+    }
+    refresh();
+    return wrap;
+  },
+
+  tags(){
+    const wrap = el('div',{class:'space-y-4'});
+    wrap.appendChild(pageHeader('標籤管理','建立、編輯標籤，並一鍵派發給目標會員'));
+
+    const grid = el('div',{class:'grid md:grid-cols-2 lg:grid-cols-3 gap-4'});
+    DB.tags.forEach(t=>{
+      const cnt = DB.members.filter(m=>m.tags.includes(t.id)).length;
+      const c = el('div',{class:'card p-5'});
+      c.innerHTML = `
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded" style="background:${t.color}"></span>
+              <span class="font-semibold">${t.name}</span>
+            </div>
+            <div class="text-xs text-slate-500 mt-1">${cnt} 位會員</div>
+          </div>
+          <div class="flex gap-1">
+            <button class="btn btn-ghost p-1.5" title="編輯" onclick="window.__notice('編輯標籤：${t.name}')">${icon('pencil','w-4 h-4')}</button>
+            <button class="btn btn-ghost p-1.5" title="派發" onclick="window.__assignTag('${t.id}')">${icon('send','w-4 h-4')}</button>
+          </div>
+        </div>
+        <div class="mt-3 text-xs text-slate-500">適用：依商品條件自動派發 / 手動指定</div>`;
+      grid.appendChild(c);
+    });
+    // 新增卡
+    const add = el('div',{class:'card p-5 border-dashed border-2 flex items-center justify-center text-slate-500 cursor-pointer hover:bg-slate-50',
+      onclick:()=>toast('（原型示範）此處可彈出新增標籤對話框','info')
+    });
+    add.innerHTML = `<div class="flex items-center gap-2">${icon('plus-circle','w-5 h-5')} 新增標籤</div>`;
+    grid.appendChild(add);
+    wrap.appendChild(grid);
+    return wrap;
+  },
+
+  courses(){
+    const wrap = el('div',{class:'space-y-4'});
+    wrap.appendChild(pageHeader('課程管理','編輯課程內容，依標籤投放給目標會員'));
+
+    const grid = el('div',{class:'grid md:grid-cols-2 gap-4'});
+    DB.courses.forEach(c=>{
+      const enrolled = Math.floor(Math.random()*8)+2;
+      const card = el('div',{class:'card p-5'});
+      card.innerHTML = `
+        <div class="flex items-start gap-4">
+          <div class="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center text-3xl">${c.image}</div>
+          <div class="flex-1">
+            <div class="font-semibold">${c.title}</div>
+            <div class="text-xs text-slate-500 mt-0.5">${c.teacher}　·　${c.date} ${c.time}</div>
+            <div class="mt-2 flex gap-1 flex-wrap">${c.tags.map(t=>tagChip(t)).join('')}</div>
+            <div class="mt-2 text-xs text-slate-500">${c.outline}</div>
+          </div>
+        </div>
+        <div class="mt-4 flex items-center justify-between">
+          <div class="text-sm text-slate-600">已報名 <b>${enrolled}</b> 人</div>
+          <div class="flex gap-2">
+            <button class="btn btn-ghost" onclick="window.__notice('編輯課程：${c.title}')">${icon('pencil','w-4 h-4')} 編輯</button>
+            <button class="btn btn-primary" onclick="window.__notice('已寄出提醒給 ${enrolled} 位報名會員')">${icon('send','w-4 h-4')} 通知報名者</button>
+          </div>
+        </div>`;
+      grid.appendChild(card);
+    });
+    const addCourse = el('div',{class:'card p-5 border-dashed border-2 flex items-center justify-center text-slate-500 cursor-pointer hover:bg-slate-50',
+      onclick:()=>toast('（原型示範）此處可彈出新增課程編輯器','info')});
+    addCourse.innerHTML = `<div class="flex items-center gap-2">${icon('plus-circle','w-5 h-5')} 新增課程</div>`;
+    grid.appendChild(addCourse);
+    wrap.appendChild(grid);
+    return wrap;
+  },
+
+  review(){
+    const wrap = el('div',{class:'space-y-4'});
+    wrap.appendChild(pageHeader('任務審核','會員上傳的任務照片，審核後給予積分'));
+
+    const tableCard = el('div',{class:'card overflow-hidden'});
+    function refresh(){
+      tableCard.innerHTML = `
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50 text-left text-xs text-slate-500">
+            <tr>
+              <th class="px-4 py-3">時間</th>
+              <th>會員</th>
+              <th>任務</th>
+              <th>備註</th>
+              <th>狀態</th>
+              <th class="pr-4 text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${DB.submissions.map(s=>{
+              const m = memberById(s.memberId), t = taskById(s.taskId);
+              const badge = s.status==='approved'
+                ? '<span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded">已審核</span>'
+                : s.status==='rejected'
+                ? '<span class="text-xs bg-rose-100 text-rose-700 px-2 py-0.5 rounded">已退回</span>'
+                : '<span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">待審核</span>';
+              const ops = s.status==='pending'
+                ? `<button class="btn btn-primary text-xs" onclick="window.__approve('${s.id}')">${icon('check','w-3.5 h-3.5')} 通過 +${t.points}</button>
+                   <button class="btn btn-ghost text-xs" onclick="window.__reject('${s.id}')">退回</button>`
+                : '<span class="text-xs text-slate-400">已完成</span>';
+              return `<tr class="border-t">
+                <td class="px-4 py-3 text-slate-500">${s.ts}</td>
+                <td>${m.name}</td>
+                <td>${t.name}</td>
+                <td class="text-slate-600">${s.note}</td>
+                <td>${badge}</td>
+                <td class="pr-4 text-right space-x-1">${ops}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>`;
+      lucide.createIcons();
+    }
+    window.__approve = id => { const s = DB.submissions.find(x=>x.id===id); s.status='approved'; toast('已通過審核 ✓','ok'); refresh(); };
+    window.__reject  = id => { const s = DB.submissions.find(x=>x.id===id); s.status='rejected'; toast('已退回','warn'); refresh(); };
+    refresh();
+    wrap.appendChild(tableCard);
+    return wrap;
+  },
+
+  announce(){
+    const wrap = el('div',{class:'space-y-4'});
+    wrap.appendChild(pageHeader('公告管理','編輯顯示於前台公告區的內容'));
+
+    const editor = el('div',{class:'card p-5 space-y-3'});
+    editor.innerHTML = `
+      <div class="font-semibold">新增公告</div>
+      <input id="ann-title" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="公告標題" />
+      <textarea id="ann-body" class="w-full border rounded-lg px-3 py-2 text-sm" rows="4" placeholder="公告內容..."></textarea>
+      <div class="flex justify-end"><button class="btn btn-primary" id="ann-save">${icon('save','w-4 h-4')} 發布</button></div>`;
+    wrap.appendChild(editor);
+
+    const list = el('div',{class:'card divide-y'});
+    function refresh(){
+      list.innerHTML = '';
+      DB.announcements.forEach(n=>{
+        const row = el('div',{class:'p-5 flex items-start justify-between gap-4'});
+        row.innerHTML = `
+          <div>
+            <div class="font-semibold">${n.title}</div>
+            <div class="text-xs text-slate-500 mt-0.5">${n.date}</div>
+            <div class="text-sm text-slate-600 mt-2">${n.content}</div>
+          </div>
+          <button class="btn btn-ghost" onclick="window.__delAnn('${n.id}')">${icon('trash-2','w-4 h-4')}</button>`;
+        list.appendChild(row);
+      });
+      lucide.createIcons();
+    }
+    window.__delAnn = id => { const i = DB.announcements.findIndex(x=>x.id===id); DB.announcements.splice(i,1); toast('已刪除','warn'); refresh(); };
+    refresh();
+    wrap.appendChild(list);
+
+    setTimeout(()=>{
+      $('#ann-save').addEventListener('click',()=>{
+        const t = $('#ann-title').value.trim(), b = $('#ann-body').value.trim();
+        if(!t || !b){ toast('請填寫標題與內容','warn'); return; }
+        DB.announcements.unshift({ id:'n'+(Date.now()), title:t, date:new Date().toISOString().slice(0,10), content:b });
+        $('#ann-title').value=''; $('#ann-body').value='';
+        toast('已發布公告 ✓','ok'); refresh();
+      });
+    }, 0);
+
+    return wrap;
+  },
+};
+
+/* ============================================================
+ *   SHARED COMPONENTS
+ * ============================================================ */
+function pageHeader(title, subtitle){
+  const h = el('div',{class:'pb-2'});
+  h.innerHTML = `<div class="text-xl font-bold text-slate-900">${title}</div>
+                 <div class="text-sm text-slate-500 mt-0.5">${subtitle}</div>`;
+  return h;
+}
+function emptyState(msg){
+  const e = el('div',{class:'card p-10 text-center text-slate-500'});
+  e.innerHTML = `${icon('inbox','w-10 h-10 mx-auto text-slate-300 mb-2')}<div>${msg}</div>`;
+  return e;
+}
+
+/* ============================================================
+ *   DEMO HANDLERS
+ * ============================================================ */
+window.__demoJoin  = name => toast(`已加入活動：${name}`,'ok');
+window.__enroll    = id => { const c = courseById(id); toast(`報名成功：${c.title}（系統將於 ${c.date} 自動提醒）`,'ok'); };
+window.__checkin   = name => toast(`今日已完成打卡：${name}`,'ok');
+window.__upload    = name => toast(`已上傳「${name}」，待後臺管理員審核`,'info');
+window.__viewMember= id => { const m = memberById(id); toast(`檢視會員：${m.name}（原型示範）`,'info'); };
+window.__assignTag = id => { const t = tagById(id); toast(`已開啟「${t.name}」標籤派發對話框（原型示範）`,'info'); };
+window.__notice    = msg => toast(msg,'info');
+
+/* ============================================================
+ *   INIT
+ * ============================================================ */
+setRole('member');
+</script>
+</body>
+</html>
