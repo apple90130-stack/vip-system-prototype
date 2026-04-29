@@ -1,0 +1,35 @@
+{
+  "rules": { "amountTarget": 30000, "shareTarget": 10 },
+  "members": [
+    { "id": 1, "name": "林芯妤", "phone": "0912345678", "level": "準 VIP", "spend": 24800, "orders": 8, "shares": 7, "points": 460, "tags": ["益生菌", "鱸魚精", "兒童保健"], "purchases": ["益生菌", "鱸魚精"] },
+    { "id": 2, "name": "陳雅婷", "phone": "0922111888", "level": "VIP", "spend": 43600, "orders": 12, "shares": 12, "points": 860, "tags": ["瘦身", "酵素"], "purchases": ["酵素"] },
+    { "id": 3, "name": "吳孟潔", "phone": "0933777666", "level": "一般會員", "spend": 9800, "orders": 3, "shares": 3, "points": 120, "tags": ["藻油課程"], "purchases": ["藻油"] }
+  ],
+  "activities": [
+    { "id": 1, "tag": "益生菌", "title": "益生菌 14 天打卡抽獎", "meta": "完成每日打卡即可獲得抽獎資格。" },
+    { "id": 2, "tag": "鱸魚精", "title": "鱸魚精回購禮", "meta": "回傳食用心得，審核後贈 150 點。" },
+    { "id": 3, "tag": "兒童保健", "title": "親子照護問卷", "meta": "填寫使用狀況，客服將安排關懷提醒。" },
+    { "id": 4, "tag": "瘦身", "title": "夏季瘦身挑戰", "meta": "完成心得任務即可累積額外點數。" }
+  ],
+  "courses": [
+    { "id": 1, "title": "益生菌照護線上課", "time": "2026/05/01 20:00", "tag": "益生菌", "outline": "兒童與成人日常補充方式。", "signups": 26, "registeredMemberIds": [] },
+    { "id": 2, "title": "鱸魚精術後營養課", "time": "2026/05/08 19:30", "tag": "鱸魚精", "outline": "不同照護情境的營養安排。", "signups": 18, "registeredMemberIds": [] },
+    { "id": 3, "title": "夏季瘦身飲食課", "time": "2026/05/12 20:30", "tag": "瘦身", "outline": "低負擔菜單與回購提醒。", "signups": 33, "registeredMemberIds": [] }
+  ],
+  "tasks": [
+    { "id": 1, "memberId": 1, "memberName": "林芯妤", "title": "社群曬單截圖", "url": "https://example.com/share.png", "time": "2026/04/29 09:20", "points": 100, "status": "pending" },
+    { "id": 2, "memberId": 2, "memberName": "陳雅婷", "title": "瘦身心得照片", "url": "https://example.com/review.png", "time": "2026/04/28 21:14", "points": 150, "status": "pending" }
+  ],
+  "announcements": [
+    { "id": 1, "text": "本週粉絲福利：完成曬單任務可加碼 100 點，報名課程再抽粉金限定禮。", "createdAt": "2026-04-29" }
+  ],
+  "calendar": [
+    { "day": "5/1", "name": "益生菌體驗團", "type": "體驗團", "style": "rose" },
+    { "day": "5/4", "name": "鱸魚精中年團", "type": "中年團", "style": "" },
+    { "day": "5/8", "name": "藻油親子團", "type": "體驗團", "style": "rose" },
+    { "day": "5/12", "name": "酵素保養團", "type": "中年團", "style": "" },
+    { "day": "5/18", "name": "夏日瘦身團", "type": "體驗團", "style": "rose" },
+    { "day": "5/23", "name": "營養補給團", "type": "中年團", "style": "" },
+    { "day": "5/28", "name": "粉絲限定團", "type": "福利團", "style": "rose" }
+  ]
+}
